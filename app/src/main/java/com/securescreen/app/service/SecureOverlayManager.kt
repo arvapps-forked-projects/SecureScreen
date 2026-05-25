@@ -8,7 +8,10 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 
-class SecureOverlayManager(private val context: Context) {
+class SecureOverlayManager(
+    private val context: Context,
+    private val windowTypeOverride: Int? = null
+) {
 
     enum class Mode {
         TRANSPARENT,
@@ -28,14 +31,16 @@ class SecureOverlayManager(private val context: Context) {
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }
 
+            val windowType = windowTypeOverride ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                WindowManager.LayoutParams.TYPE_PHONE
+            }
+
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                } else {
-                    WindowManager.LayoutParams.TYPE_PHONE
-                },
+                windowType,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM or

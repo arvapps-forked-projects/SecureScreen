@@ -43,9 +43,11 @@ class ForegroundService : Service() {
     private var enabledImePackages: Set<String> = emptySet()
     private var imePackageRefreshElapsedMs = 0L
     private var protectionEnabled = true
+    private var usingAccessibilityOverlay = false
+    private var usingAccessibilityWatermark = false
 
     private val secureTeardownRunnable = Runnable {
-        secureOverlayManager.hide()
+        hideSecureOverlay()
         secureActive = false
         teardownScheduled = false
         protectedSessionActive = false
@@ -148,8 +150,8 @@ class ForegroundService : Service() {
         mainHandler.removeCallbacks(pollRunnable)
         mainHandler.removeCallbacks(secureTeardownRunnable)
         runCatching { unregisterReceiver(systemDialogsReceiver) }
-        secureOverlayManager.hide()
-        watermarkOverlayManager.hide()
+        hideSecureOverlay()
+        hideWatermark()
         repository.setServiceEnabled(false)
         secureActive = false
         teardownScheduled = false
@@ -162,8 +164,8 @@ class ForegroundService : Service() {
     private fun handlePollingTick(): Boolean {
         if (!protectionEnabled) {
             cancelDelayedTeardown()
-            secureOverlayManager.hide()
-            watermarkOverlayManager.hide()
+            hideSecureOverlay()
+            hideWatermark()
             secureActive = false
             protectedSessionActive = false
             sessionExitCandidateSinceElapsedMs = 0L
@@ -209,19 +211,20 @@ class ForegroundService : Service() {
             shouldSecureByPackage ||
             shouldSecureByIme ||
             shouldHoldSession
-        val overlayAllowed = PermissionUtils.canDrawOverlays(this)
+        val accessibilityEnabled = isAccessibilityOverlayEnabled()
+        val overlayAllowed = accessibilityEnabled || PermissionUtils.canDrawOverlays(this)
 
         if (overlayAllowed && shouldSecure) {
             cancelDelayedTeardown()
-            secureOverlayManager.show(SecureOverlayManager.Mode.TRANSPARENT)
+            showSecureOverlay(SecureOverlayManager.Mode.TRANSPARENT, accessibilityEnabled)
             secureActive = true
         } else if (overlayAllowed && shouldMaskRecents) {
             cancelDelayedTeardown()
-            secureOverlayManager.show(SecureOverlayManager.Mode.OPAQUE_MASK)
+            showSecureOverlay(SecureOverlayManager.Mode.OPAQUE_MASK, accessibilityEnabled)
             secureActive = true
         } else if (!overlayAllowed) {
             cancelDelayedTeardown()
-            secureOverlayManager.hide()
+            hideSecureOverlay()
             secureActive = false
             protectedSessionActive = false
             sessionExitCandidateSinceElapsedMs = 0L
@@ -243,8 +246,8 @@ class ForegroundService : Service() {
 
         if (!enabled) {
             cancelDelayedTeardown()
-            secureOverlayManager.hide()
-            watermarkOverlayManager.hide()
+            hideSecureOverlay()
+            hideWatermark()
             secureActive = false
             protectedSessionActive = false
             sessionExitCandidateSinceElapsedMs = 0L
@@ -370,15 +373,73 @@ class ForegroundService : Service() {
 
     private fun handleWatermarkIfNeeded() {
         val watermarkEnabled = repository.isWatermarkEnabled()
+        val accessibilityEnabled = isAccessibilityOverlayEnabled()
 
-        if (watermarkEnabled && PermissionUtils.canDrawOverlays(this)) {
-            watermarkOverlayManager.showOrUpdate(
+        if (watermarkEnabled && (accessibilityEnabled || PermissionUtils.canDrawOverlays(this))) {
+            showWatermark(
                 opacityPercent = repository.getWatermarkOpacityPercent(),
-                sessionId = repository.getSessionId()
+                sessionId = repository.getSessionId(),
+                useAccessibility = accessibilityEnabled
             )
+        } else {
+            hideWatermark()
+        }
+    }
+
+    private fun isAccessibilityOverlayEnabled(): Boolean {
+        return PermissionUtils.isAccessibilityServiceEnabled(
+            this,
+            SecureAccessibilityService::class.java
+        )
+    }
+
+    private fun showSecureOverlay(mode: SecureOverlayManager.Mode, useAccessibility: Boolean) {
+        if (useAccessibility) {
+            usingAccessibilityOverlay = true
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_SHOW_SECURE_OVERLAY) {
+                putExtra(SecureAccessibilityService.EXTRA_SECURE_MODE, mode.name)
+            }
+        } else {
+            usingAccessibilityOverlay = false
+            secureOverlayManager.show(mode)
+        }
+    }
+
+    private fun hideSecureOverlay() {
+        if (usingAccessibilityOverlay) {
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_HIDE_SECURE_OVERLAY)
+        } else {
+            secureOverlayManager.hide()
+        }
+        usingAccessibilityOverlay = false
+    }
+
+    private fun showWatermark(opacityPercent: Int, sessionId: String, useAccessibility: Boolean) {
+        if (useAccessibility) {
+            usingAccessibilityWatermark = true
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_SHOW_WATERMARK) {
+                putExtra(SecureAccessibilityService.EXTRA_WATERMARK_OPACITY, opacityPercent)
+                putExtra(SecureAccessibilityService.EXTRA_WATERMARK_SESSION_ID, sessionId)
+            }
+        } else {
+            usingAccessibilityWatermark = false
+            watermarkOverlayManager.showOrUpdate(opacityPercent, sessionId)
+        }
+    }
+
+    private fun hideWatermark() {
+        if (usingAccessibilityWatermark) {
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_HIDE_WATERMARK)
         } else {
             watermarkOverlayManager.hide()
         }
+        usingAccessibilityWatermark = false
+    }
+
+    private fun sendAccessibilityOverlayCommand(action: String, configure: Intent.() -> Unit = {}) {
+        val intent = Intent(action).setPackage(packageName)
+        intent.configure()
+        sendBroadcast(intent)
     }
 
     private fun buildNotification(): Notification {
