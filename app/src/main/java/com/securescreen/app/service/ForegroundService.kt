@@ -1,5 +1,6 @@
 package com.securescreen.app.service
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -22,6 +23,7 @@ import androidx.core.content.ContextCompat
 import com.securescreen.app.R
 import com.securescreen.app.data.AppRepository
 import com.securescreen.app.data.PermissionUtils
+import com.securescreen.app.receiver.WatchdogReceiver
 import com.securescreen.app.ui.main.MainActivity
 
 class ForegroundService : Service() {
@@ -98,6 +100,7 @@ class ForegroundService : Service() {
         watermarkOverlayManager = WatermarkOverlayManager(applicationContext)
         inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         protectionEnabled = repository.isProtectionEnabled()
+        scheduleWatchdog(this)
         runCatching { refreshEnabledImePackages() }
             .onFailure { Log.w(TAG, "Unable to refresh IME package list on create", it) }
         runCatching { registerSystemDialogsReceiver() }
@@ -128,6 +131,7 @@ class ForegroundService : Service() {
 
             startForeground(NOTIFICATION_ID, buildNotification())
             repository.setServiceEnabled(true)
+            scheduleWatchdog(this)
             fastPollingUntilElapsedMs =
                 SystemClock.elapsedRealtime() + FAST_POLL_AFTER_SWITCH_WINDOW_MS
 
@@ -152,6 +156,7 @@ class ForegroundService : Service() {
         runCatching { unregisterReceiver(systemDialogsReceiver) }
         hideSecureOverlay()
         hideWatermark()
+        cancelWatchdog(this)
         repository.setServiceEnabled(false)
         secureActive = false
         teardownScheduled = false
@@ -520,6 +525,8 @@ class ForegroundService : Service() {
         private const val TAG = "ForegroundService"
         private const val CHANNEL_ID = "secure_screen_service_channel"
         private const val NOTIFICATION_ID = 4511
+        private const val WATCHDOG_REQUEST_CODE = 4512
+        private const val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L
         private const val IDLE_POLL_INTERVAL_MS = 80L
         private const val ACTIVE_POLL_INTERVAL_MS = 80L
         private const val FAST_POLL_AFTER_SWITCH_WINDOW_MS = 1_200L
@@ -537,6 +544,7 @@ class ForegroundService : Service() {
             "com.securescreen.app.action.TOGGLE_PROTECTION"
         private const val ACTION_SET_PROTECTION =
             "com.securescreen.app.action.SET_PROTECTION"
+        private const val ACTION_WATCHDOG = "com.securescreen.app.action.WATCHDOG"
         const val ACTION_PROTECTION_STATE_CHANGED =
             "com.securescreen.app.action.PROTECTION_STATE_CHANGED"
         private const val EXTRA_PROTECTION_ENABLED = "extra_protection_enabled"
@@ -558,6 +566,50 @@ class ForegroundService : Service() {
             val intent = Intent(context, ForegroundService::class.java)
             intent.action = ACTION_STOP
             context.startService(intent)
+        }
+
+        fun scheduleWatchdog(context: Context) {
+            val alarmManager =
+                context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(context, WatchdogReceiver::class.java).apply {
+                action = ACTION_WATCHDOG
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                WATCHDOG_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val triggerAtMs = SystemClock.elapsedRealtime() + WATCHDOG_INTERVAL_MS
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAtMs,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAtMs,
+                    pendingIntent
+                )
+            }
+        }
+
+        fun cancelWatchdog(context: Context) {
+            val alarmManager =
+                context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(context, WatchdogReceiver::class.java).apply {
+                action = ACTION_WATCHDOG
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                WATCHDOG_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.cancel(pendingIntent)
         }
     }
 }
