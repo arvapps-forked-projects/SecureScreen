@@ -21,6 +21,7 @@ class BootReceiver : BroadcastReceiver() {
         if (repository.isServiceEnabled() && repository.isAutoStartOnBootEnabled()) {
             ForegroundService.start(context)
             ForegroundService.setProtectionEnabled(context, repository.isProtectionEnabled())
+            ForegroundService.scheduleWatchdog(context)
         }
     }
 }

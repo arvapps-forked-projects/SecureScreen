@@ -2,13 +2,14 @@ package com.securescreen.app.data
 
 import android.Manifest
 import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
 
 object PermissionUtils {
 
@@ -40,5 +41,17 @@ object PermissionUtils {
 
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    fun isAccessibilityServiceEnabled(context: Context, serviceClass: Class<*>): Boolean {
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ).orEmpty()
+
+        val target = ComponentName(context, serviceClass).flattenToString()
+        return enabledServices
+            .split(':')
+            .any { it.equals(target, ignoreCase = true) }
     }
 }

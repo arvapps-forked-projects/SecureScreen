@@ -39,6 +39,9 @@
     <string name="usage_access_required">Usage access permission is required.</string>
     <string name="overlay_permission_required">Overlay permission is required for protection.</string>
     <string name="notification_permission_required">Notification permission is required for foreground protection and quick toggle.</string>
+    <string name="accessibility_permission_required">Accessibility permission is required for protection.</string>
+    <string name="accessibility_service_label">SecureScreen overlay service</string>
+    <string name="accessibility_service_description">Enables a trusted overlay so touch input works correctly while protection is active.</string>
 
     <string name="notification_channel_name">SecureScreen Protection</string>
     <string name="notification_title">SecureScreen protection running</string>

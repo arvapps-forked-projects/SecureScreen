@@ -1,5 +1,6 @@
 package com.securescreen.app.service
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -22,6 +23,7 @@ import androidx.core.content.ContextCompat
 import com.securescreen.app.R
 import com.securescreen.app.data.AppRepository
 import com.securescreen.app.data.PermissionUtils
+import com.securescreen.app.receiver.WatchdogReceiver
 import com.securescreen.app.ui.main.MainActivity
 
 class ForegroundService : Service() {
@@ -43,9 +45,11 @@ class ForegroundService : Service() {
     private var enabledImePackages: Set<String> = emptySet()
     private var imePackageRefreshElapsedMs = 0L
     private var protectionEnabled = true
+    private var usingAccessibilityOverlay = false
+    private var usingAccessibilityWatermark = false
 
     private val secureTeardownRunnable = Runnable {
-        secureOverlayManager.hide()
+        hideSecureOverlay()
         secureActive = false
         teardownScheduled = false
         protectedSessionActive = false
@@ -96,6 +100,7 @@ class ForegroundService : Service() {
         watermarkOverlayManager = WatermarkOverlayManager(applicationContext)
         inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         protectionEnabled = repository.isProtectionEnabled()
+        scheduleWatchdog(this)
         runCatching { refreshEnabledImePackages() }
             .onFailure { Log.w(TAG, "Unable to refresh IME package list on create", it) }
         runCatching { registerSystemDialogsReceiver() }
@@ -126,6 +131,7 @@ class ForegroundService : Service() {
 
             startForeground(NOTIFICATION_ID, buildNotification())
             repository.setServiceEnabled(true)
+            scheduleWatchdog(this)
             fastPollingUntilElapsedMs =
                 SystemClock.elapsedRealtime() + FAST_POLL_AFTER_SWITCH_WINDOW_MS
 
@@ -148,8 +154,9 @@ class ForegroundService : Service() {
         mainHandler.removeCallbacks(pollRunnable)
         mainHandler.removeCallbacks(secureTeardownRunnable)
         runCatching { unregisterReceiver(systemDialogsReceiver) }
-        secureOverlayManager.hide()
-        watermarkOverlayManager.hide()
+        hideSecureOverlay()
+        hideWatermark()
+        cancelWatchdog(this)
         repository.setServiceEnabled(false)
         secureActive = false
         teardownScheduled = false
@@ -162,8 +169,8 @@ class ForegroundService : Service() {
     private fun handlePollingTick(): Boolean {
         if (!protectionEnabled) {
             cancelDelayedTeardown()
-            secureOverlayManager.hide()
-            watermarkOverlayManager.hide()
+            hideSecureOverlay()
+            hideWatermark()
             secureActive = false
             protectedSessionActive = false
             sessionExitCandidateSinceElapsedMs = 0L
@@ -209,19 +216,20 @@ class ForegroundService : Service() {
             shouldSecureByPackage ||
             shouldSecureByIme ||
             shouldHoldSession
-        val overlayAllowed = PermissionUtils.canDrawOverlays(this)
+        val accessibilityEnabled = isAccessibilityOverlayEnabled()
+        val overlayAllowed = accessibilityEnabled || PermissionUtils.canDrawOverlays(this)
 
         if (overlayAllowed && shouldSecure) {
             cancelDelayedTeardown()
-            secureOverlayManager.show(SecureOverlayManager.Mode.TRANSPARENT)
+            showSecureOverlay(SecureOverlayManager.Mode.TRANSPARENT, accessibilityEnabled)
             secureActive = true
         } else if (overlayAllowed && shouldMaskRecents) {
             cancelDelayedTeardown()
-            secureOverlayManager.show(SecureOverlayManager.Mode.OPAQUE_MASK)
+            showSecureOverlay(SecureOverlayManager.Mode.OPAQUE_MASK, accessibilityEnabled)
             secureActive = true
         } else if (!overlayAllowed) {
             cancelDelayedTeardown()
-            secureOverlayManager.hide()
+            hideSecureOverlay()
             secureActive = false
             protectedSessionActive = false
             sessionExitCandidateSinceElapsedMs = 0L
@@ -243,8 +251,8 @@ class ForegroundService : Service() {
 
         if (!enabled) {
             cancelDelayedTeardown()
-            secureOverlayManager.hide()
-            watermarkOverlayManager.hide()
+            hideSecureOverlay()
+            hideWatermark()
             secureActive = false
             protectedSessionActive = false
             sessionExitCandidateSinceElapsedMs = 0L
@@ -370,15 +378,73 @@ class ForegroundService : Service() {
 
     private fun handleWatermarkIfNeeded() {
         val watermarkEnabled = repository.isWatermarkEnabled()
+        val accessibilityEnabled = isAccessibilityOverlayEnabled()
 
-        if (watermarkEnabled && PermissionUtils.canDrawOverlays(this)) {
-            watermarkOverlayManager.showOrUpdate(
+        if (watermarkEnabled && (accessibilityEnabled || PermissionUtils.canDrawOverlays(this))) {
+            showWatermark(
                 opacityPercent = repository.getWatermarkOpacityPercent(),
-                sessionId = repository.getSessionId()
+                sessionId = repository.getSessionId(),
+                useAccessibility = accessibilityEnabled
             )
+        } else {
+            hideWatermark()
+        }
+    }
+
+    private fun isAccessibilityOverlayEnabled(): Boolean {
+        return PermissionUtils.isAccessibilityServiceEnabled(
+            this,
+            SecureAccessibilityService::class.java
+        )
+    }
+
+    private fun showSecureOverlay(mode: SecureOverlayManager.Mode, useAccessibility: Boolean) {
+        if (useAccessibility) {
+            usingAccessibilityOverlay = true
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_SHOW_SECURE_OVERLAY) {
+                putExtra(SecureAccessibilityService.EXTRA_SECURE_MODE, mode.name)
+            }
+        } else {
+            usingAccessibilityOverlay = false
+            secureOverlayManager.show(mode)
+        }
+    }
+
+    private fun hideSecureOverlay() {
+        if (usingAccessibilityOverlay) {
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_HIDE_SECURE_OVERLAY)
+        } else {
+            secureOverlayManager.hide()
+        }
+        usingAccessibilityOverlay = false
+    }
+
+    private fun showWatermark(opacityPercent: Int, sessionId: String, useAccessibility: Boolean) {
+        if (useAccessibility) {
+            usingAccessibilityWatermark = true
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_SHOW_WATERMARK) {
+                putExtra(SecureAccessibilityService.EXTRA_WATERMARK_OPACITY, opacityPercent)
+                putExtra(SecureAccessibilityService.EXTRA_WATERMARK_SESSION_ID, sessionId)
+            }
+        } else {
+            usingAccessibilityWatermark = false
+            watermarkOverlayManager.showOrUpdate(opacityPercent, sessionId)
+        }
+    }
+
+    private fun hideWatermark() {
+        if (usingAccessibilityWatermark) {
+            sendAccessibilityOverlayCommand(SecureAccessibilityService.ACTION_HIDE_WATERMARK)
         } else {
             watermarkOverlayManager.hide()
         }
+        usingAccessibilityWatermark = false
+    }
+
+    private fun sendAccessibilityOverlayCommand(action: String, configure: Intent.() -> Unit = {}) {
+        val intent = Intent(action).setPackage(packageName)
+        intent.configure()
+        sendBroadcast(intent)
     }
 
     private fun buildNotification(): Notification {
@@ -459,6 +525,8 @@ class ForegroundService : Service() {
         private const val TAG = "ForegroundService"
         private const val CHANNEL_ID = "secure_screen_service_channel"
         private const val NOTIFICATION_ID = 4511
+        private const val WATCHDOG_REQUEST_CODE = 4512
+        private const val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L
         private const val IDLE_POLL_INTERVAL_MS = 80L
         private const val ACTIVE_POLL_INTERVAL_MS = 80L
         private const val FAST_POLL_AFTER_SWITCH_WINDOW_MS = 1_200L
@@ -476,6 +544,7 @@ class ForegroundService : Service() {
             "com.securescreen.app.action.TOGGLE_PROTECTION"
         private const val ACTION_SET_PROTECTION =
             "com.securescreen.app.action.SET_PROTECTION"
+        private const val ACTION_WATCHDOG = "com.securescreen.app.action.WATCHDOG"
         const val ACTION_PROTECTION_STATE_CHANGED =
             "com.securescreen.app.action.PROTECTION_STATE_CHANGED"
         private const val EXTRA_PROTECTION_ENABLED = "extra_protection_enabled"
@@ -497,6 +566,50 @@ class ForegroundService : Service() {
             val intent = Intent(context, ForegroundService::class.java)
             intent.action = ACTION_STOP
             context.startService(intent)
+        }
+
+        fun scheduleWatchdog(context: Context) {
+            val alarmManager =
+                context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(context, WatchdogReceiver::class.java).apply {
+                action = ACTION_WATCHDOG
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                WATCHDOG_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val triggerAtMs = SystemClock.elapsedRealtime() + WATCHDOG_INTERVAL_MS
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAtMs,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAtMs,
+                    pendingIntent
+                )
+            }
+        }
+
+        fun cancelWatchdog(context: Context) {
+            val alarmManager =
+                context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(context, WatchdogReceiver::class.java).apply {
+                action = ACTION_WATCHDOG
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                WATCHDOG_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.cancel(pendingIntent)
         }
     }
 }
