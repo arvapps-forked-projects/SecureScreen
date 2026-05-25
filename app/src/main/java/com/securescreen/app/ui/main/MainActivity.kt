@@ -24,6 +24,7 @@ import com.securescreen.app.data.AppRepository
 import com.securescreen.app.data.PermissionUtils
 import com.securescreen.app.databinding.ActivityMainBinding
 import com.securescreen.app.service.ForegroundService
+import com.securescreen.app.service.SecureAccessibilityService
 import com.securescreen.app.ui.settings.SettingsActivity
 
 class MainActivity : AppCompatActivity() {
@@ -336,6 +337,12 @@ class MainActivity : AppCompatActivity() {
         if (!PermissionUtils.hasUsageStatsPermission(this)) {
             Toast.makeText(this, R.string.usage_access_required, Toast.LENGTH_LONG).show()
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            return
+        }
+
+        if (!PermissionUtils.isAccessibilityServiceEnabled(this, SecureAccessibilityService::class.java)) {
+            Toast.makeText(this, R.string.accessibility_permission_required, Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             return
         }
 
