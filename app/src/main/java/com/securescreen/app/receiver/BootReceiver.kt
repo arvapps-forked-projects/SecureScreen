@@ -18,9 +18,9 @@ class BootReceiver : BroadcastReceiver() {
         val repository = AppRepository(context)
         if (!PermissionUtils.hasNotificationPermission(context)) return
 
-        if (repository.isServiceEnabled() && repository.isAutoStartOnBootEnabled()) {
+        if (repository.isProtectionEnabled() && repository.isAutoStartOnBootEnabled()) {
             ForegroundService.start(context)
-            ForegroundService.setProtectionEnabled(context, repository.isProtectionEnabled())
+            ForegroundService.setProtectionEnabled(context, true)
             ForegroundService.scheduleWatchdog(context)
         }
     }

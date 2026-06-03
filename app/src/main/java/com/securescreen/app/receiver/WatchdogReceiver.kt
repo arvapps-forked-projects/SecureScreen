@@ -10,10 +10,10 @@ class WatchdogReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
         val repository = AppRepository(context)
-        if (!repository.isServiceEnabled()) return
+        if (!repository.isProtectionEnabled()) return
 
         ForegroundService.start(context)
-        ForegroundService.setProtectionEnabled(context, repository.isProtectionEnabled())
+        ForegroundService.setProtectionEnabled(context, true)
         ForegroundService.scheduleWatchdog(context)
     }
 }

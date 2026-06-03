@@ -1,6 +1,7 @@
 package com.securescreen.app.service
 
 import android.app.AlarmManager
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -33,6 +34,7 @@ class ForegroundService : Service() {
     private lateinit var secureOverlayManager: SecureOverlayManager
     private lateinit var watermarkOverlayManager: WatermarkOverlayManager
     private lateinit var inputMethodManager: InputMethodManager
+    private lateinit var keyguardManager: KeyguardManager
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var secureActive = false
@@ -99,6 +101,7 @@ class ForegroundService : Service() {
         secureOverlayManager = SecureOverlayManager(applicationContext)
         watermarkOverlayManager = WatermarkOverlayManager(applicationContext)
         inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        keyguardManager = getSystemService(KeyguardManager::class.java)
         protectionEnabled = repository.isProtectionEnabled()
         scheduleWatchdog(this)
         runCatching { refreshEnabledImePackages() }
@@ -111,6 +114,7 @@ class ForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            setProtectionEnabledInternal(false)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -156,7 +160,11 @@ class ForegroundService : Service() {
         runCatching { unregisterReceiver(systemDialogsReceiver) }
         hideSecureOverlay()
         hideWatermark()
-        cancelWatchdog(this)
+        if (repository.isProtectionEnabled()) {
+            scheduleWatchdog(this)
+        } else {
+            cancelWatchdog(this)
+        }
         repository.setServiceEnabled(false)
         secureActive = false
         teardownScheduled = false
@@ -203,16 +211,20 @@ class ForegroundService : Service() {
             (detector.isRecentsVisible(snapshot.packageName, snapshot.className) ||
                 isRecentsSignalActive())
 
+        val shouldBypassSystemWideProtection = fullSystemProtectionEnabled &&
+            shouldBypassSystemWideProtection()
+
         val shouldHoldSession = shouldHoldProtectedSession(
             nowElapsedMs = nowElapsedMs,
             currentForeground = currentForeground,
             protectedPackages = protectedPackages,
             isImeForeground = isImeForeground,
             shouldMaskRecents = shouldMaskRecents,
-            fullSystemProtectionEnabled = fullSystemProtectionEnabled
+            fullSystemProtectionEnabled = fullSystemProtectionEnabled,
+            shouldBypassSystemWideProtection = shouldBypassSystemWideProtection
         )
 
-        val shouldSecure = fullSystemProtectionEnabled ||
+        val shouldSecure = (fullSystemProtectionEnabled && !shouldBypassSystemWideProtection) ||
             shouldSecureByPackage ||
             shouldSecureByIme ||
             shouldHoldSession
@@ -227,7 +239,7 @@ class ForegroundService : Service() {
             cancelDelayedTeardown()
             showSecureOverlay(SecureOverlayManager.Mode.OPAQUE_MASK, accessibilityEnabled)
             secureActive = true
-        } else if (!overlayAllowed) {
+        } else if (!overlayAllowed || shouldBypassSystemWideProtection) {
             cancelDelayedTeardown()
             hideSecureOverlay()
             secureActive = false
@@ -286,8 +298,10 @@ class ForegroundService : Service() {
         protectedPackages: Set<String>,
         isImeForeground: Boolean,
         shouldMaskRecents: Boolean,
-        fullSystemProtectionEnabled: Boolean
+        fullSystemProtectionEnabled: Boolean,
+        shouldBypassSystemWideProtection: Boolean
     ): Boolean {
+        if (fullSystemProtectionEnabled && shouldBypassSystemWideProtection) return false
         if (fullSystemProtectionEnabled) return true
         if (!protectedSessionActive) return false
 
@@ -396,6 +410,10 @@ class ForegroundService : Service() {
             this,
             SecureAccessibilityService::class.java
         )
+    }
+
+    private fun shouldBypassSystemWideProtection(): Boolean {
+        return keyguardManager.isKeyguardLocked
     }
 
     private fun showSecureOverlay(mode: SecureOverlayManager.Mode, useAccessibility: Boolean) {
@@ -581,6 +599,25 @@ class ForegroundService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             val triggerAtMs = SystemClock.elapsedRealtime() + WATCHDOG_INTERVAL_MS
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                !alarmManager.canScheduleExactAlarms()
+            ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        triggerAtMs,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.set(
+                        AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        triggerAtMs,
+                        pendingIntent
+                    )
+                }
+                return
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 alarmManager.setExactAndAllowWhileIdle(

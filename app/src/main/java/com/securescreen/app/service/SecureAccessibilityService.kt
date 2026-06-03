@@ -8,9 +8,12 @@ import android.content.IntentFilter
 import android.os.Build
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import com.securescreen.app.data.AppRepository
+import com.securescreen.app.service.ForegroundService
 
 class SecureAccessibilityService : AccessibilityService() {
 
+    private lateinit var repository: AppRepository
     private lateinit var secureOverlayManager: SecureOverlayManager
     private lateinit var watermarkOverlayManager: WatermarkOverlayManager
     private var receiverRegistered = false
@@ -49,6 +52,7 @@ class SecureAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        repository = AppRepository(applicationContext)
         secureOverlayManager = SecureOverlayManager(
             this,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -58,12 +62,16 @@ class SecureAccessibilityService : AccessibilityService() {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
         )
         registerOverlayReceiver()
+        ensureProtectionServiceRunning()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         secureOverlayManager.hide()
         watermarkOverlayManager.hide()
         unregisterOverlayReceiver()
+        if (repository.isProtectionEnabled()) {
+            ForegroundService.scheduleWatchdog(this)
+        }
         return super.onUnbind(intent)
     }
 
@@ -71,6 +79,9 @@ class SecureAccessibilityService : AccessibilityService() {
         secureOverlayManager.hide()
         watermarkOverlayManager.hide()
         unregisterOverlayReceiver()
+        if (repository.isProtectionEnabled()) {
+            ForegroundService.scheduleWatchdog(this)
+        }
         super.onDestroy()
     }
 
@@ -102,6 +113,14 @@ class SecureAccessibilityService : AccessibilityService() {
         if (!receiverRegistered) return
         runCatching { unregisterReceiver(overlayCommandReceiver) }
         receiverRegistered = false
+    }
+
+    private fun ensureProtectionServiceRunning() {
+        if (!repository.isProtectionEnabled()) return
+
+        ForegroundService.start(this)
+        ForegroundService.setProtectionEnabled(this, true)
+        ForegroundService.scheduleWatchdog(this)
     }
 
     companion object {

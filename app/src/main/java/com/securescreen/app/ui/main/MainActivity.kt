@@ -1,6 +1,7 @@
 package com.securescreen.app.ui.main
 
 import android.Manifest
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -86,10 +87,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.loadApps()
 
         // Restore monitoring automatically if user had protection enabled.
-        if (repository.isServiceEnabled()) {
+        if (repository.isProtectionEnabled()) {
             if (ensureNotificationPermissionForServiceStart(fromUserEnable = false)) {
                 ForegroundService.start(this)
-                ForegroundService.setProtectionEnabled(this, repository.isProtectionEnabled())
+                ForegroundService.setProtectionEnabled(this, true)
             }
         }
     }
@@ -330,6 +331,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        if (!ensureExactAlarmPermission()) {
+            return
+        }
+
         if (viewModel.serviceEnabled.value == true) {
             return
         }
@@ -378,6 +383,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        return false
+    }
+
+    private fun ensureExactAlarmPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true
+        }
+
+        val alarmManager = getSystemService(AlarmManager::class.java)
+        if (alarmManager.canScheduleExactAlarms()) {
+            return true
+        }
+
+        Toast.makeText(this, R.string.exact_alarm_permission_required, Toast.LENGTH_LONG).show()
+        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
         return false
     }
 

@@ -1,0 +1,2 @@
+Fix lockscreen touch blocking in systemwide mode.
+Improve background recovery and accessibility/service resilience.
