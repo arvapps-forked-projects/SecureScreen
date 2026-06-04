@@ -58,7 +58,7 @@ class AppSelectionAdapter(
             val context = binding.root.context
             binding.root.strokeColor = ContextCompat.getColor(
                 context,
-                if (isProtected) R.color.purple_500 else R.color.glass_stroke
+                if (isProtected) R.color.primary_blue else R.color.glass_stroke
             )
             binding.root.strokeWidth = if (isProtected) 2 else 1
 

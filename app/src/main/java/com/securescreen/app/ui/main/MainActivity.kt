@@ -10,35 +10,28 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.chip.Chip
 import com.securescreen.app.R
-import com.securescreen.app.data.AppInfo
 import com.securescreen.app.data.AppRepository
 import com.securescreen.app.data.PermissionUtils
 import com.securescreen.app.databinding.ActivityMainBinding
 import com.securescreen.app.service.ForegroundService
 import com.securescreen.app.service.SecureAccessibilityService
+import com.securescreen.app.ui.protectedapps.ProtectedAppsActivity
+import com.securescreen.app.ui.permissions.PermissionsActivity
 import com.securescreen.app.ui.settings.SettingsActivity
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
-    private lateinit var adapter: AppSelectionAdapter
     private lateinit var repository: AppRepository
-    private var allApps: List<AppInfo> = emptyList()
     private var protectedPackages: Set<String> = emptySet()
-    private var appSearchQuery: String = ""
-    private var updatingScopeSelector = false
-    private var updatingBootToggle = false
     private var pendingEnableProtectionAfterNotificationPermission = false
     private var pendingRestoreServiceAfterNotificationPermission = false
 
@@ -78,13 +71,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         repository = AppRepository(applicationContext)
-        setupRecyclerView()
-        setupSearch()
+        binding.topAppBar.inflateMenu(R.menu.menu_main)
+        setupTopBar()
         setupClicks()
-        setupScopeSelector()
+        setupModeSelector()
         observeViewModel()
 
-        viewModel.loadApps()
+        viewModel.loadState()
 
         // Restore monitoring automatically if user had protection enabled.
         if (repository.isProtectionEnabled()) {
@@ -98,10 +91,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.loadState()
-        updatePermissionState()
-        syncScopeSelector()
-        syncAutoStartToggle()
-        updateBatteryOptimizationState()
+        refreshDashboard()
     }
 
     override fun onStart() {
@@ -119,200 +109,174 @@ class MainActivity : AppCompatActivity() {
         runCatching { unregisterReceiver(protectionStateReceiver) }
     }
 
-    private fun setupRecyclerView() {
-        adapter = AppSelectionAdapter { packageName, isProtected ->
-            viewModel.setPackageProtected(packageName, isProtected)
-        }
-
-        binding.appsRecyclerView.layoutManager = LinearLayoutManager(this)
-        binding.appsRecyclerView.adapter = adapter
-    }
-
-    private fun setupSearch() {
-        binding.searchEditText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                appSearchQuery = s?.toString().orEmpty()
-                renderAppList()
-            }
-
-            override fun afterTextChanged(s: Editable?) = Unit
-        })
-
-        // Hide keyboard when Enter/Search button is pressed
-        binding.searchEditText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
-                val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-                imm.hideSoftInputFromWindow(binding.searchEditText.windowToken, 0)
-                true
-            } else {
-                false
+    private fun setupTopBar() {
+        binding.topAppBar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_settings -> {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    true
+                }
+                else -> false
             }
         }
     }
 
     private fun setupClicks() {
-        binding.grantUsageAccessButton.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-        }
-
         binding.enableProtectionButton.setOnClickListener {
             handleProtectionToggle()
         }
 
-        binding.openSettingsButton.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+        binding.managePermissionsButton.setOnClickListener {
+            startActivity(Intent(this, PermissionsActivity::class.java))
         }
 
-        binding.openBatteryOptimizationGuideButton.setOnClickListener {
-            openBatteryOptimizationGuide()
-        }
-
-        binding.autoStartOnBootSwitch.setOnCheckedChangeListener { _, isChecked ->
-            if (updatingBootToggle) return@setOnCheckedChangeListener
-            repository.setAutoStartOnBootEnabled(isChecked)
+        binding.manageProtectedAppsButton.setOnClickListener {
+            startActivity(Intent(this, ProtectedAppsActivity::class.java))
         }
     }
 
-    private fun setupScopeSelector() {
-        binding.protectionScopeGroup.setOnCheckedChangeListener { _, checkedId ->
-            if (updatingScopeSelector) return@setOnCheckedChangeListener
+    private fun setupModeSelector() {
+        binding.protectionModeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
 
-            val systemWide = checkedId == R.id.systemWideModeRadio
+            val systemWide = checkedId == R.id.systemWideModeButton
             repository.setAggressiveModeEnabled(systemWide)
-            updateScopeUi(systemWide, viewModel.protectedPackages.value?.size ?: 0)
+            refreshDashboard()
         }
     }
 
-    private fun syncScopeSelector() {
+    private fun observeViewModel() {
+        viewModel.protectedPackages.observe(this) { packages ->
+            protectedPackages = packages
+            refreshDashboard()
+        }
+
+        viewModel.serviceEnabled.observe(this) { enabled ->
+            renderStatus(enabled)
+        }
+    }
+
+    private fun refreshDashboard() {
+        syncModeSelector()
+        renderStatus(viewModel.serviceEnabled.value == true)
+        renderPermissions()
+        renderModeCard()
+        renderProtectedAppsCard()
+    }
+
+    private fun syncModeSelector() {
         val systemWide = repository.isAggressiveModeEnabled()
-        updatingScopeSelector = true
-        binding.protectionScopeGroup.check(
-            if (systemWide) R.id.systemWideModeRadio else R.id.appWiseModeRadio
-        )
-        updatingScopeSelector = false
-        updateScopeUi(systemWide, viewModel.protectedPackages.value?.size ?: 0)
-    }
-
-    private fun syncAutoStartToggle() {
-        updatingBootToggle = true
-        binding.autoStartOnBootSwitch.isChecked = repository.isAutoStartOnBootEnabled()
-        updatingBootToggle = false
-    }
-
-    private fun updateBatteryOptimizationState() {
-        val ignored = PermissionUtils.isIgnoringBatteryOptimizations(this)
-        val status = getString(
-            if (ignored) {
-                R.string.battery_optimization_ignored
-            } else {
-                R.string.battery_optimization_restricted
-            }
-        )
-
-        binding.batteryOptimizationState.text = getString(
-            R.string.battery_optimization_status,
-            status
-        )
-        binding.batteryOptimizationState.setTextColor(
-            ContextCompat.getColor(
-                this,
-                if (ignored) R.color.status_active else R.color.status_inactive
-            )
-        )
-    }
-
-    private fun openBatteryOptimizationGuide() {
-        val intents = listOf(
-            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
-            Intent(
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:$packageName")
-            ),
-            Intent(Settings.ACTION_SETTINGS)
-        )
-
-        val opened = intents.firstOrNull { intent ->
-            intent.resolveActivity(packageManager) != null
-        }?.let { intent ->
-            runCatching { startActivity(intent) }.isSuccess
-        } ?: false
-
-        if (!opened) {
-            Toast.makeText(this, R.string.unable_to_open_settings, Toast.LENGTH_SHORT).show()
+        val buttonId = if (systemWide) R.id.systemWideModeButton else R.id.appWiseModeButton
+        if (binding.protectionModeGroup.checkedButtonId != buttonId) {
+            binding.protectionModeGroup.check(buttonId)
         }
     }
 
-    private fun updateScopeUi(systemWide: Boolean, protectedCount: Int) {
+    private fun renderStatus(enabled: Boolean) {
+        val statusTextRes = if (enabled) R.string.status_active else R.string.status_inactive
+        val statusColor = if (enabled) R.color.status_active else R.color.status_inactive
+        val modeTitleRes = if (repository.isAggressiveModeEnabled()) {
+            R.string.systemwide_mode_title
+        } else {
+            R.string.app_specific_mode_title
+        }
+
+        binding.statusValue.text = getString(statusTextRes)
+        binding.statusValue.setTextColor(ContextCompat.getColor(this, statusColor))
+        binding.currentModeValue.text = getString(modeTitleRes)
+        binding.protectedAppsSummary.text = getString(
+            R.string.protected_apps_summary,
+            protectedPackages.size
+        )
+        binding.enableProtectionButton.text = if (enabled) {
+            getString(R.string.disable_protection)
+        } else {
+            getString(R.string.enable_protection)
+        }
+
+        binding.statusValue.text = buildString {
+            append(if (enabled) "●" else "○")
+            append(' ')
+            append(getString(statusTextRes))
+        }
+    }
+
+    private fun renderPermissions() {
+        val usageGranted = PermissionUtils.hasUsageStatsPermission(this)
+        val batteryIgnored = PermissionUtils.isIgnoringBatteryOptimizations(this)
+        val accessibilityEnabled = PermissionUtils.isAccessibilityServiceEnabled(
+            this,
+            SecureAccessibilityService::class.java
+        )
+        val notificationGranted = PermissionUtils.hasNotificationPermission(this)
+        val exactAlarmAllowed = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            true
+        } else {
+            getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+        }
+        val grantedCount = listOf(
+            usageGranted,
+            batteryIgnored,
+            accessibilityEnabled,
+            notificationGranted,
+            exactAlarmAllowed
+        ).count { it }
+
+        binding.permissionsSummaryText.text = getString(
+            R.string.permissions_granted_summary,
+            grantedCount,
+            5
+        )
+
+        applyStatusChip(binding.usageAccessChip, "Usage Access", usageGranted)
+        applyStatusChip(binding.batteryOptimizationChip, "Battery", batteryIgnored)
+        applyStatusChip(binding.accessibilityChip, "Accessibility", accessibilityEnabled)
+        applyStatusChip(binding.notificationChip, "Notifications", notificationGranted)
+        applyStatusChip(binding.exactAlarmChip, "Exact Alarm", exactAlarmAllowed)
+
+        binding.managePermissionsButton.visibility = if (grantedCount < 5) {
+            android.view.View.VISIBLE
+        } else {
+            android.view.View.GONE
+        }
+    }
+
+    private fun renderModeCard() {
         binding.modeDescription.text = getString(
-            if (systemWide) {
+            if (repository.isAggressiveModeEnabled()) {
                 R.string.mode_description_systemwide
             } else {
                 R.string.mode_description_appwise
             }
         )
+    }
 
-        if (systemWide) {
-            binding.selectedCount.text = getString(R.string.systemwide_active_note)
-            binding.searchInputLayout.visibility = View.GONE
-            binding.noAppsText.visibility = View.GONE
-            binding.appsRecyclerView.visibility = View.GONE
+    private fun renderProtectedAppsCard() {
+        val count = protectedPackages.size
+        binding.selectedCount.text = getString(R.string.selected_apps_summary, count)
+        binding.selectedAppsHint.text = if (repository.isAggressiveModeEnabled()) {
+            getString(R.string.systemwide_active_note)
         } else {
-            binding.selectedCount.text = getString(R.string.selected_count, protectedCount)
-            binding.searchInputLayout.visibility = View.VISIBLE
-            binding.appsRecyclerView.visibility = View.VISIBLE
-            renderAppList()
+            getString(R.string.manage_apps_description)
+        }
+
+        binding.selectedAppsCard.visibility = if (repository.isAggressiveModeEnabled()) {
+            android.view.View.GONE
+        } else {
+            android.view.View.VISIBLE
         }
     }
 
-    private fun renderAppList() {
-        if (repository.isAggressiveModeEnabled()) {
-            adapter.submit(emptyList(), protectedPackages)
-            return
-        }
+    private fun applyStatusChip(chip: Chip, label: String, isPositive: Boolean) {
+        val text = if (isPositive) "✓ $label" else label
+        val backgroundRes = R.color.surface_container_high
+        val textColor = if (isPositive) R.color.status_active else R.color.text_secondary
 
-        val query = appSearchQuery.trim()
-        val filteredApps = if (query.isBlank()) {
-            allApps
-        } else {
-            allApps.filter { app ->
-                app.appName.contains(query, ignoreCase = true) ||
-                    app.packageName.contains(query, ignoreCase = true)
-            }
-        }
-
-        adapter.submit(filteredApps, protectedPackages)
-        binding.noAppsText.visibility = if (filteredApps.isEmpty()) View.VISIBLE else View.GONE
-    }
-
-    private fun observeViewModel() {
-        viewModel.apps.observe(this) { apps ->
-            allApps = apps
-            renderAppList()
-        }
-
-        viewModel.protectedPackages.observe(this) { protectedPackages ->
-            this.protectedPackages = protectedPackages
-            renderAppList()
-            updateScopeUi(repository.isAggressiveModeEnabled(), protectedPackages.size)
-        }
-
-        viewModel.serviceEnabled.observe(this) { enabled ->
-            val statusTextRes = if (enabled) R.string.status_active else R.string.status_inactive
-            val statusColor = if (enabled) {
-                ContextCompat.getColor(this, R.color.status_active)
-            } else {
-                ContextCompat.getColor(this, R.color.status_inactive)
-            }
-            binding.statusValue.text = getString(statusTextRes)
-            binding.statusValue.setTextColor(statusColor)
-            binding.enableProtectionButton.text = if (enabled) {
-                getString(R.string.disable_protection)
-            } else {
-                getString(R.string.enable_protection)
-            }
-        }
+        chip.text = text
+        chip.isCheckable = false
+        chip.isClickable = false
+        chip.chipBackgroundColor = ContextCompat.getColorStateList(this, backgroundRes)
+        chip.setTextColor(ContextCompat.getColor(this, textColor))
     }
 
     private fun handleProtectionToggle() {
@@ -399,21 +363,5 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, R.string.exact_alarm_permission_required, Toast.LENGTH_LONG).show()
         startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
         return false
-    }
-
-    private fun updatePermissionState() {
-        val usageGranted = PermissionUtils.hasUsageStatsPermission(this)
-        binding.usagePermissionState.text = if (usageGranted) {
-            getString(R.string.permission_granted)
-        } else {
-            getString(R.string.permission_not_granted)
-        }
-
-        binding.usagePermissionState.setTextColor(
-            ContextCompat.getColor(
-                this,
-                if (usageGranted) R.color.status_active else R.color.status_inactive
-            )
-        )
     }
 }

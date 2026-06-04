@@ -3,6 +3,7 @@ package com.securescreen.app.ui.settings
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -23,6 +24,7 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         repository = AppRepository(applicationContext)
+        setupToolbar()
         setupViews()
         setupListeners()
     }
@@ -45,6 +47,17 @@ class SettingsActivity : AppCompatActivity() {
         binding.opacityValue.text = getString(R.string.opacity_value, opacity.toInt())
 
         updateOverlayPermissionState()
+        binding.versionValue.text = getVersionText()
+    }
+
+    private fun setupToolbar() {
+        binding.topAppBar.setNavigationOnClickListener {
+            finish()
+        }
+        binding.topAppBar.post {
+            binding.topAppBar.setContentInsetStartWithNavigation(0)
+        }
+        binding.topAppBar.subtitle = getString(R.string.about_description)
     }
 
     private fun setupListeners() {
@@ -92,5 +105,27 @@ class SettingsActivity : AppCompatActivity() {
                 if (granted) R.color.status_active else R.color.status_inactive
             )
         )
+    }
+
+    private fun getVersionText(): String {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(
+                packageName,
+                android.content.pm.PackageManager.PackageInfoFlags.of(0)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0)
+        }
+
+        val versionName = packageInfo.versionName.orEmpty()
+        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo.longVersionCode.toInt()
+        } else {
+            @Suppress("DEPRECATION")
+            packageInfo.versionCode
+        }
+
+        return getString(R.string.version_label, versionName, versionCode)
     }
 }

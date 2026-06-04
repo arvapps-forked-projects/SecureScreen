@@ -1,24 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.SecureScreen" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
+    <style name="Theme.SecureScreen" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary_blue</item>
         <item name="colorOnPrimary">@color/amoled_black</item>
-        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorPrimaryContainer">@color/surface_container_high</item>
+        <item name="colorOnPrimaryContainer">@color/text_primary</item>
+        <item name="colorSecondary">@color/accent_green</item>
         <item name="colorOnSecondary">@color/amoled_black</item>
-        <item name="colorSurface">@color/amoled_black_soft</item>
+        <item name="colorTertiary">@color/warning_amber</item>
+        <item name="colorError">@color/error_red</item>
+        <item name="colorSurface">@color/surface_container</item>
+        <item name="colorSurfaceVariant">@color/surface_container_high</item>
         <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/surface_border</item>
         <item name="android:colorBackground">@color/amoled_black</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:windowBackground">@color/amoled_black</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@color/amoled_black</item>
         <item name="android:navigationBarColor">@color/amoled_black</item>
         <item name="android:forceDarkAllowed">false</item>
     </style>
 
-    <style name="Theme.SecureScreen.TransparentActivity" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.SecureScreen.TransparentActivity" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>

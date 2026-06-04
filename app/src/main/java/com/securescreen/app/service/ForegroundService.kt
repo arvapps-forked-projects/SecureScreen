@@ -172,6 +172,13 @@ class ForegroundService : Service() {
         sessionExitCandidateSinceElapsedMs = 0L
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (repository.isProtectionEnabled()) {
+            scheduleWatchdog(this)
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun handlePollingTick(): Boolean {
@@ -544,7 +551,7 @@ class ForegroundService : Service() {
         private const val CHANNEL_ID = "secure_screen_service_channel"
         private const val NOTIFICATION_ID = 4511
         private const val WATCHDOG_REQUEST_CODE = 4512
-        private const val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L
+        private const val WATCHDOG_INTERVAL_MS = 5 * 60 * 1000L
         private const val IDLE_POLL_INTERVAL_MS = 80L
         private const val ACTIVE_POLL_INTERVAL_MS = 80L
         private const val FAST_POLL_AFTER_SWITCH_WINDOW_MS = 1_200L
