@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SecureScreen</string>
+    <string name="app_description">選択したアプリのスクリーンショットと画面録画を防止します。</string>
+    <string name="home_subtitle">スクリーンショットと画面録画を保護する</string>
+    <string name="hero_status_label">保護ステータス</string>
+    <string name="current_mode_label">現在のモード</string>
+    <string name="protection_mode_title">保護モード</string>
+    <string name="permissions_title">権限</string>
+    <string name="manage_permissions">権限を管理する</string>
+    <string name="manage_protected_apps">保護されたアプリを管理する</string>
+    <string name="protected_apps_title">保護されたアプリ</string>
+    <string name="protected_apps_subtitle">SecureScreenが保護するアプリを選択してください。</string>
+    <string name="protected_apps_hint">アプリ名またはパッケージで検索</string>
+    <string name="protected_apps_count">選択済み: %1$d</string>
+    <string name="home_selected_apps">選択されたアプリ</string>
+    <string name="protected_apps_summary">保護されたアプリ: %1$d</string>
+    <string name="about_title">概要</string>
+    <string name="about_description">プライバシー重視のスクリーンショットおよび画面録画保護。</string>
+    <string name="version_label">バージョン %1$s (%2$d)</string>
+    <string name="systemwide_mode_title">システム保護</string>
+    <string name="app_specific_mode_title">アプリ保護</string>
+    <string name="selected_apps_summary">%1$d 個のアプリが選択されました</string>
+    <string name="manage_apps_description">専用のアプリセレクターを開いて、保護するアプリを追加または削除します。</string>
+    <string name="permissions_summary">権限</string>
+    <string name="permissions_granted_summary">%1$d/%2$d 権限付与済み</string>
+    <string name="permissions_details_label">権限</string>
+    <string name="protected_apps_mode_label">選択されたアプリモード</string>
+
+    <string name="status_label">ステータス:</string>
+    <string name="status_active">アクティブ</string>
+    <string name="status_inactive">非アクティブ</string>
+
+    <string name="usage_access_status">使用状況へのアクセス</string>
+    <string name="permission_granted">付与済み</string>
+    <string name="permission_not_granted">未付与</string>
+
+    <string name="grant_usage_access">使用状況へのアクセスを許可する</string>
+    <string name="grant_usage_access_short">使用状況へのアクセス</string>
+    <string name="enable_protection">保護を有効にする</string>
+    <string name="disable_protection">保護を無効にする</string>
+    <string name="open_settings">設定を開く</string>
+    <string name="open_settings_icon">設定を開く</string>
+    <string name="protection_scope_label">保護モード</string>
+    <string name="app_wise_mode">アプリ単位</string>
+    <string name="system_wide_mode">システム全体</string>
+    <string name="mode_description_appwise">選択したアプリのみを保護します。</string>
+    <string name="mode_description_systemwide">フォアグラウンドとシステムを保護します。ロック画面は引き続き使用可能です。</string>
+    <string name="systemwide_active_note">システムモードが有効になっています。アプリリストは無視されます。</string>
+    <string name="search_apps">アプリを検索</string>
+    <string name="search_apps_hint">アプリ名またはパッケージで検索</string>
+    <string name="no_apps_match_search">検索条件に一致するアプリはありません。</string>
+    <string name="auto_start_on_boot">自動起動</string>
+    <string name="battery_optimization_status">バッテリー最適化: %1$s</string>
+    <string name="battery_optimization_ignored">無視</string>
+    <string name="battery_optimization_restricted">制限付き</string>
+    <string name="battery_optimization_guide">バッテリー最適化ガイド</string>
+    <string name="battery_optimization_guide_short">バッテリーガイド</string>
+    <string name="unable_to_open_settings">このデバイスで設定を開くことができません。</string>
+    <string name="selected_count">選択済み: %1$d</string>
+    <string name="app_icon">アプリアイコン</string>
+
+    <string name="usage_access_required">使用状況へのアクセス権限が必要です。</string>
+    <string name="overlay_permission_required">保護にはオーバーレイ権限が必要です。</string>
+    <string name="notification_permission_required">通知権限が必要です。</string>
+    <string name="accessibility_permission_required">保護にはユーザー補助権限が必要です。</string>
+    <string name="exact_alarm_permission_required">バックグラウンドで保護を維持するには、正確なアラーム権限が必要です。</string>
+    <string name="accessibility_service_label">SecureScreen オーバーレイサービス</string>
+    <string name="accessibility_service_description">保護機能が有効な場合でもタッチ入力が正しく機能するように、信頼できるオーバーレイを有効にします。</string>
+
+    <string name="notification_channel_name">SecureScreen 保護</string>
+    <string name="notification_title">SecureScreen は実行中です</string>
+    <string name="notification_text">フォアグラウンドアプリを監視しています。</string>
+    <string name="notification_text_active">保護はアクティブです。タップして設定を管理します。</string>
+    <string name="notification_text_paused">保護は一時停止されています。クイック設定を使用して再開します。</string>
+    <string name="notification_action_enable">有効にする</string>
+    <string name="notification_action_disable">無効にする</string>
+    <string name="notification_action_stop_service">サービスを停止する</string>
+    <string name="stop_protection">停止</string>
+
+    <string name="settings_title">設定</string>
+    <string name="enable_watermark">透かしオーバーレイを有効にする</string>
+    <string name="overlay_permission_status">オーバーレイ権限:</string>
+    <string name="grant_overlay_permission">権限を付与する</string>
+    <string name="watermark_opacity">透かしの不透明度</string>
+    <string name="opacity_value">不透明度: %1$d%%</string>
+    <string name="aggressive_mode">システム全体の完全保護</string>
+    <string name="play_store_note">プライバシー重視のスクリーンショットおよび画面録画保護。</string>
+    <string name="watermark_section_title">透かし保護</string>
+    <string name="opacity_section_title">透かしの不透明度</string>
+    <string name="secure_overlay_label">セキュアモード: %1$s</string>
+
+    <string name="exact_alarm_not_required">このAndroidバージョンでは正確なアラームは必要ありません。</string>
+    <string name="language_section_title">言語</string>
+    <string name="language_system_default">システムデフォルト</string>
+    <string name="language_english">English</string>
+    <string name="language_chinese_simplified">中文（简体）</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="language_japanese">日本語</string>
+</resources>

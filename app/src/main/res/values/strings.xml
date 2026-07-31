@@ -72,7 +72,8 @@
     <string name="notification_title">SecureScreen protection running</string>
     <string name="notification_text">Monitoring foreground app for secure enforcement.</string>
     <string name="notification_text_active">Protection is active. Tap to manage settings.</string>
-    <string name="notification_text_paused">Protection is paused. Use quick toggle to resume.</string>
+    <string name="notification_text_paused">Protection is paused. Use quick setting to resume.</string>
+    <string name="notification_text_interrupted">Protection interrupted due to missing permissions. Tap to fix.</string>
     <string name="notification_action_enable">Enable</string>
     <string name="notification_action_disable">Disable</string>
     <string name="notification_action_stop_service">Stop service</string>
@@ -90,4 +91,14 @@
     <string name="opacity_section_title">Watermark opacity</string>
 
     <string name="secure_overlay_label">Secure mode: %1$s</string>
+
+    <string name="exact_alarm_not_required">Exact alarm is not required on this Android version.</string>
+    <string name="language_section_title">Language</string>
+    <string name="language_system_default">System default</string>
+    <string name="language_english">English</string>
+    <string name="language_chinese_simplified">中文（简体）</string>
+    <string name="language_japanese">日本語</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+    <string name="tile_label_secure_screen">SecureScreen</string>
 </resources>

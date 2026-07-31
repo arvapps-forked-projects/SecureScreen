@@ -46,7 +46,9 @@ class ForegroundService : Service() {
     private var sessionExitCandidateSinceElapsedMs = 0L
     private var enabledImePackages: Set<String> = emptySet()
     private var imePackageRefreshElapsedMs = 0L
+    
     private var protectionEnabled = true
+    private var isHealthInterrupted = false
     private var usingAccessibilityOverlay = false
     private var usingAccessibilityWatermark = false
 
@@ -94,6 +96,15 @@ class ForegroundService : Service() {
         }
     }
 
+    private val healthCheckRunnable = object : Runnable {
+        override fun run() {
+            if (protectionEnabled) {
+                checkHealthAndPermissions()
+            }
+            mainHandler.postDelayed(this, 5000L)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         repository = AppRepository(applicationContext)
@@ -110,6 +121,7 @@ class ForegroundService : Service() {
             .onFailure { Log.w(TAG, "Unable to register system dialogs receiver", it) }
         runCatching { createNotificationChannel() }
             .onFailure { Log.w(TAG, "Unable to create notification channel", it) }
+        mainHandler.post(healthCheckRunnable)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -133,7 +145,7 @@ class ForegroundService : Service() {
                 else -> Unit
             }
 
-            startForeground(NOTIFICATION_ID, buildNotification())
+            updateForegroundNotification()
             repository.setServiceEnabled(true)
             scheduleWatchdog(this)
             fastPollingUntilElapsedMs =
@@ -157,6 +169,7 @@ class ForegroundService : Service() {
         super.onDestroy()
         mainHandler.removeCallbacks(pollRunnable)
         mainHandler.removeCallbacks(secureTeardownRunnable)
+        mainHandler.removeCallbacks(healthCheckRunnable)
         runCatching { unregisterReceiver(systemDialogsReceiver) }
         hideSecureOverlay()
         hideWatermark()
@@ -182,13 +195,20 @@ class ForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun handlePollingTick(): Boolean {
-        if (!protectionEnabled) {
+        if (!protectionEnabled || isHealthInterrupted) {
             cancelDelayedTeardown()
             hideSecureOverlay()
             hideWatermark()
             secureActive = false
             protectedSessionActive = false
             sessionExitCandidateSinceElapsedMs = 0L
+            return true
+        }
+
+        if (keyguardManager.isKeyguardLocked) {
+            hideSecureOverlay()
+            hideWatermark()
+            secureActive = false
             return true
         }
 
@@ -263,9 +283,10 @@ class ForegroundService : Service() {
     }
 
     private fun setProtectionEnabledInternal(enabled: Boolean) {
-        if (protectionEnabled == enabled) return
+        if (protectionEnabled == enabled && !isHealthInterrupted) return
 
         protectionEnabled = enabled
+        isHealthInterrupted = false
         repository.setProtectionEnabled(enabled)
 
         if (!enabled) {
@@ -282,12 +303,7 @@ class ForegroundService : Service() {
             mainHandler.post(pollRunnable)
         }
 
-        runCatching {
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.notify(NOTIFICATION_ID, buildNotification())
-        }.onFailure {
-            Log.w(TAG, "Unable to update foreground notification", it)
-        }
+        updateForegroundNotification()
         notifyProtectionStateChanged(enabled)
     }
 
@@ -472,7 +488,11 @@ class ForegroundService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun buildNotification(): Notification {
+    private fun updateForegroundNotification(paused: Boolean = false, interrupted: Boolean = false) {
+        startForeground(NOTIFICATION_ID, buildNotification(paused, interrupted))
+    }
+
+    private fun buildNotification(paused: Boolean = false, interrupted: Boolean = false): Notification {
         val mainIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -501,15 +521,15 @@ class ForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_security)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(
                 getString(
-                    if (protectionEnabled) {
-                        R.string.notification_text_active
-                    } else {
-                        R.string.notification_text_paused
+                    when {
+                        interrupted -> R.string.notification_text_interrupted
+                        paused -> R.string.notification_text_paused
+                        else -> R.string.notification_text_active
                     }
                 )
             )
@@ -518,11 +538,7 @@ class ForegroundService : Service() {
             .addAction(
                 R.drawable.ic_security,
                 getString(
-                    if (protectionEnabled) {
-                        R.string.notification_action_disable
-                    } else {
-                        R.string.notification_action_enable
-                    }
+                    if (paused || interrupted) R.string.notification_action_enable else R.string.notification_action_disable
                 ),
                 togglePendingIntent
             )
@@ -531,7 +547,8 @@ class ForegroundService : Service() {
                 getString(R.string.notification_action_stop_service),
                 stopPendingIntent
             )
-            .build()
+        
+        return builder.build()
     }
 
     private fun createNotificationChannel() {
@@ -544,6 +561,28 @@ class ForegroundService : Service() {
             NotificationManager.IMPORTANCE_LOW
         )
         manager.createNotificationChannel(channel)
+    }
+
+    private fun checkHealthAndPermissions() {
+        if (!protectionEnabled) return
+        
+        val hasOverlay = PermissionUtils.canDrawOverlays(this) || isAccessibilityOverlayEnabled()
+        val hasUsage = PermissionUtils.hasUsageStatsPermission(this)
+        
+        val isHealthy = hasOverlay && hasUsage
+        
+        if (!isHealthy && !isHealthInterrupted) {
+            Log.w(TAG, "Health check failed! Overlay: $hasOverlay, Usage: $hasUsage")
+            isHealthInterrupted = true
+            hideSecureOverlay()
+            hideWatermark()
+            secureActive = false
+            updateForegroundNotification(paused = false, interrupted = true)
+        } else if (isHealthy && isHealthInterrupted) {
+            Log.i(TAG, "Health check passed. Restoring protection.")
+            isHealthInterrupted = false
+            updateForegroundNotification(paused = false, interrupted = false)
+        }
     }
 
     companion object {

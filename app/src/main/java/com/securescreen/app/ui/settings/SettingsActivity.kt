@@ -12,6 +12,9 @@ import com.securescreen.app.data.AppRepository
 import com.securescreen.app.data.PermissionUtils
 import com.securescreen.app.databinding.ActivitySettingsBinding
 import com.google.android.material.slider.Slider
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -48,6 +51,19 @@ class SettingsActivity : AppCompatActivity() {
 
         updateOverlayPermissionState()
         binding.versionValue.text = getVersionText()
+
+        val currentLocales = AppCompatDelegate.getApplicationLocales()
+        val currentLocaleTag = if (currentLocales.isEmpty) "" else currentLocales.get(0)?.toLanguageTag() ?: ""
+        
+        val languageTextRes = when (currentLocaleTag) {
+            "en" -> R.string.language_english
+            "zh-CN" -> R.string.language_chinese_simplified
+            "es" -> R.string.language_spanish
+            "fr" -> R.string.language_french
+            "ja" -> R.string.language_japanese
+            else -> R.string.language_system_default
+        }
+        binding.languageValue.setText(languageTextRes)
     }
 
     private fun setupToolbar() {
@@ -61,6 +77,10 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        binding.languageCard.setOnClickListener {
+            showLanguageSelectionDialog()
+        }
+
         binding.watermarkSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked && !PermissionUtils.canDrawOverlays(this)) {
                 openOverlayPermissionScreen()
@@ -127,5 +147,38 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         return getString(R.string.version_label, versionName, versionCode)
+    }
+
+    private fun showLanguageSelectionDialog() {
+        val options = arrayOf(
+            getString(R.string.language_system_default),
+            getString(R.string.language_english),
+            getString(R.string.language_chinese_simplified),
+            getString(R.string.language_spanish),
+            getString(R.string.language_french),
+            getString(R.string.language_japanese)
+        )
+        
+        val tags = arrayOf("", "en", "zh-CN", "es", "fr", "ja")
+        
+        val currentLocales = AppCompatDelegate.getApplicationLocales()
+        val currentLocaleTag = if (currentLocales.isEmpty) "" else currentLocales.get(0)?.toLanguageTag() ?: ""
+        
+        val checkedItem = tags.indexOf(currentLocaleTag).takeIf { it >= 0 } ?: 0
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.language_section_title)
+            .setSingleChoiceItems(options, checkedItem) { dialog, which ->
+                val selectedTag = tags[which]
+                val appLocale = if (selectedTag.isEmpty()) {
+                    LocaleListCompat.getEmptyLocaleList()
+                } else {
+                    LocaleListCompat.forLanguageTags(selectedTag)
+                }
+                AppCompatDelegate.setApplicationLocales(appLocale)
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 }

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SecureScreen</string>
+    <string name="app_description">Empêche les captures d\'écran et les enregistrements pour les applications sélectionnées.</string>
+    <string name="home_subtitle">Protège les captures et enregistrements d\'écran</string>
+    <string name="hero_status_label">État de la protection</string>
+    <string name="current_mode_label">Mode actuel</string>
+    <string name="protection_mode_title">Mode de protection</string>
+    <string name="permissions_title">Autorisations</string>
+    <string name="manage_permissions">Gérer les autorisations</string>
+    <string name="manage_protected_apps">Gérer les applications protégées</string>
+    <string name="protected_apps_title">Applications protégées</string>
+    <string name="protected_apps_subtitle">Choisissez quelles applications doivent être protégées.</string>
+    <string name="protected_apps_hint">Rechercher par nom ou paquet</string>
+    <string name="protected_apps_count">Sélectionnées: %1$d</string>
+    <string name="home_selected_apps">Applications sélectionnées</string>
+    <string name="protected_apps_summary">Applications protégées: %1$d</string>
+    <string name="about_title">À propos</string>
+    <string name="about_description">Protection des captures d\'écran axée sur la confidentialité.</string>
+    <string name="version_label">Version %1$s (%2$d)</string>
+    <string name="systemwide_mode_title">Protection du Système</string>
+    <string name="app_specific_mode_title">Protection d\'Applications</string>
+    <string name="selected_apps_summary">%1$d applications sélectionnées</string>
+    <string name="manage_apps_description">Ouvrez le sélecteur d\'applications pour ajouter ou supprimer des applications protégées.</string>
+    <string name="permissions_summary">Autorisations</string>
+    <string name="permissions_granted_summary">%1$d/%2$d autorisations accordées</string>
+    <string name="permissions_details_label">Autorisations</string>
+    <string name="protected_apps_mode_label">Mode d\'Applications Sélectionnées</string>
+
+    <string name="status_label">État :</string>
+    <string name="status_active">Actif</string>
+    <string name="status_inactive">Inactif</string>
+
+    <string name="usage_access_status">Accès à l\'utilisation</string>
+    <string name="permission_granted">Accordée</string>
+    <string name="permission_not_granted">Non accordée</string>
+
+    <string name="grant_usage_access">Accorder l\'accès à l\'utilisation</string>
+    <string name="grant_usage_access_short">Accès à l\'utilisation</string>
+    <string name="enable_protection">Activer la protection</string>
+    <string name="disable_protection">Désactiver la protection</string>
+    <string name="open_settings">Ouvrir les paramètres</string>
+    <string name="open_settings_icon">Ouvrir les paramètres</string>
+    <string name="protection_scope_label">Mode de protection</string>
+    <string name="app_wise_mode">Par application</string>
+    <string name="system_wide_mode">Tout le système</string>
+    <string name="mode_description_appwise">Protéger uniquement les applications sélectionnées.</string>
+    <string name="mode_description_systemwide">Protéger le premier plan et le système. L\'écran de verrouillage reste utilisable.</string>
+    <string name="systemwide_active_note">Mode système activé. La liste des applications est ignorée.</string>
+    <string name="search_apps">Rechercher des applications</string>
+    <string name="search_apps_hint">Rechercher par nom ou paquet</string>
+    <string name="no_apps_match_search">Aucune application ne correspond à votre recherche.</string>
+    <string name="auto_start_on_boot">Démarrage automatique</string>
+    <string name="battery_optimization_status">Optimisation de la batterie : %1$s</string>
+    <string name="battery_optimization_ignored">Ignorée</string>
+    <string name="battery_optimization_restricted">Restreinte</string>
+    <string name="battery_optimization_guide">Guide d\'optimisation de la batterie</string>
+    <string name="battery_optimization_guide_short">Guide batterie</string>
+    <string name="unable_to_open_settings">Impossible d\'ouvrir les paramètres sur cet appareil.</string>
+    <string name="selected_count">Sélectionnées : %1$d</string>
+    <string name="app_icon">Icône de l\'application</string>
+
+    <string name="usage_access_required">L\'autorisation d\'accès à l\'utilisation est requise.</string>
+    <string name="overlay_permission_required">L\'autorisation de superposition est requise pour la protection.</string>
+    <string name="notification_permission_required">L\'autorisation de notification est requise.</string>
+    <string name="accessibility_permission_required">L\'autorisation d\'accessibilité est requise pour la protection.</string>
+    <string name="exact_alarm_permission_required">L\'autorisation d\'alarme exacte est requise pour maintenir la protection en arrière-plan.</string>
+    <string name="accessibility_service_label">Service de superposition SecureScreen</string>
+    <string name="accessibility_service_description">Active une superposition de confiance pour que la saisie tactile fonctionne correctement.</string>
+
+    <string name="notification_channel_name">Protection SecureScreen</string>
+    <string name="notification_title">SecureScreen est en cours d\'exécution</string>
+    <string name="notification_text">Surveillance de l\'application au premier plan.</string>
+    <string name="notification_text_active">La protection est active. Appuyez pour gérer les paramètres.</string>
+    <string name="notification_text_paused">La protection est en pause. Utilisez le réglage rapide pour la reprendre.</string>
+    <string name="notification_action_enable">Activer</string>
+    <string name="notification_action_disable">Désactiver</string>
+    <string name="notification_action_stop_service">Arrêter le service</string>
+    <string name="stop_protection">Arrêter</string>
+
+    <string name="settings_title">Paramètres</string>
+    <string name="enable_watermark">Activer le filigrane</string>
+    <string name="overlay_permission_status">Autorisation de superposition :</string>
+    <string name="grant_overlay_permission">Accorder l\'autorisation</string>
+    <string name="watermark_opacity">Opacité du filigrane</string>
+    <string name="opacity_value">Opacité : %1$d%%</string>
+    <string name="aggressive_mode">Protection complète du système</string>
+    <string name="play_store_note">Protection des captures d\'écran axée sur la confidentialité.</string>
+    <string name="watermark_section_title">Protection par filigrane</string>
+    <string name="opacity_section_title">Opacité du filigrane</string>
+    <string name="secure_overlay_label">Mode sécurisé : %1$s</string>
+
+    <string name="exact_alarm_not_required">L\'alarme exacte n\'est pas requise sur cette version d\'Android.</string>
+    <string name="language_section_title">Langue</string>
+    <string name="language_system_default">Par défaut du système</string>
+    <string name="language_english">English</string>
+    <string name="language_chinese_simplified">中文（简体）</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+</resources>

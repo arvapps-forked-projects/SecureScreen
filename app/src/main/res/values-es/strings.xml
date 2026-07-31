@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SecureScreen</string>
+    <string name="app_description">Evita capturas de pantalla y grabaciones en aplicaciones seleccionadas.</string>
+    <string name="home_subtitle">Protege capturas y grabaciones de pantalla</string>
+    <string name="hero_status_label">Estado de protección</string>
+    <string name="current_mode_label">Modo actual</string>
+    <string name="protection_mode_title">Modo de protección</string>
+    <string name="permissions_title">Permisos</string>
+    <string name="manage_permissions">Administrar Permisos</string>
+    <string name="manage_protected_apps">Administrar aplicaciones protegidas</string>
+    <string name="protected_apps_title">Aplicaciones protegidas</string>
+    <string name="protected_apps_subtitle">Elige qué aplicaciones debe proteger SecureScreen.</string>
+    <string name="protected_apps_hint">Buscar por nombre o paquete</string>
+    <string name="protected_apps_count">Seleccionadas: %1$d</string>
+    <string name="home_selected_apps">Aplicaciones seleccionadas</string>
+    <string name="protected_apps_summary">Aplicaciones protegidas: %1$d</string>
+    <string name="about_title">Acerca de</string>
+    <string name="about_description">Protección de capturas de pantalla centrada en la privacidad.</string>
+    <string name="version_label">Versión %1$s (%2$d)</string>
+    <string name="systemwide_mode_title">Protección del Sistema</string>
+    <string name="app_specific_mode_title">Protección de Aplicaciones</string>
+    <string name="selected_apps_summary">%1$d aplicaciones seleccionadas</string>
+    <string name="manage_apps_description">Abre el selector de aplicaciones para añadir o eliminar aplicaciones protegidas.</string>
+    <string name="permissions_summary">Permisos</string>
+    <string name="permissions_granted_summary">%1$d/%2$d permisos concedidos</string>
+    <string name="permissions_details_label">Permisos</string>
+    <string name="protected_apps_mode_label">Modo de Apps Seleccionadas</string>
+
+    <string name="status_label">Estado:</string>
+    <string name="status_active">Activo</string>
+    <string name="status_inactive">Inactivo</string>
+
+    <string name="usage_access_status">Acceso de uso</string>
+    <string name="permission_granted">Concedido</string>
+    <string name="permission_not_granted">No concedido</string>
+
+    <string name="grant_usage_access">Conceder acceso de uso</string>
+    <string name="grant_usage_access_short">Acceso de uso</string>
+    <string name="enable_protection">Activar Protección</string>
+    <string name="disable_protection">Desactivar Protección</string>
+    <string name="open_settings">Abrir Configuración</string>
+    <string name="open_settings_icon">Abrir configuración</string>
+    <string name="protection_scope_label">Modo de protección</string>
+    <string name="app_wise_mode">Por aplicación</string>
+    <string name="system_wide_mode">Todo el sistema</string>
+    <string name="mode_description_appwise">Proteger solo las aplicaciones seleccionadas.</string>
+    <string name="mode_description_systemwide">Proteger el primer plano y el sistema. La pantalla de bloqueo sigue usable.</string>
+    <string name="systemwide_active_note">Modo de sistema activado. La lista de aplicaciones se ignora.</string>
+    <string name="search_apps">Buscar aplicaciones</string>
+    <string name="search_apps_hint">Buscar por nombre o paquete</string>
+    <string name="no_apps_match_search">Ninguna aplicación coincide con la búsqueda.</string>
+    <string name="auto_start_on_boot">Inicio automático</string>
+    <string name="battery_optimization_status">Optimización de batería: %1$s</string>
+    <string name="battery_optimization_ignored">Ignorada</string>
+    <string name="battery_optimization_restricted">Restringida</string>
+    <string name="battery_optimization_guide">Guía de optimización de batería</string>
+    <string name="battery_optimization_guide_short">Guía de batería</string>
+    <string name="unable_to_open_settings">No se pudo abrir la configuración en este dispositivo.</string>
+    <string name="selected_count">Seleccionadas: %1$d</string>
+    <string name="app_icon">Icono de la app</string>
+
+    <string name="usage_access_required">El permiso de acceso de uso es obligatorio.</string>
+    <string name="overlay_permission_required">El permiso de superposición es obligatorio.</string>
+    <string name="notification_permission_required">El permiso de notificaciones es obligatorio.</string>
+    <string name="accessibility_permission_required">El permiso de accesibilidad es obligatorio.</string>
+    <string name="exact_alarm_permission_required">Se requiere el permiso de alarma exacta para mantener la protección en segundo plano.</string>
+    <string name="accessibility_service_label">Servicio de superposición de SecureScreen</string>
+    <string name="accessibility_service_description">Habilita una superposición de confianza para que la entrada táctil funcione correctamente.</string>
+
+    <string name="notification_channel_name">Protección de SecureScreen</string>
+    <string name="notification_title">SecureScreen está funcionando</string>
+    <string name="notification_text">Monitorizando la aplicación en primer plano.</string>
+    <string name="notification_text_active">La protección está activa. Toca para administrar la configuración.</string>
+    <string name="notification_text_paused">La protección está pausada. Usa el ajuste rápido para reanudarla.</string>
+    <string name="notification_action_enable">Activar</string>
+    <string name="notification_action_disable">Desactivar</string>
+    <string name="notification_action_stop_service">Detener servicio</string>
+    <string name="stop_protection">Detener</string>
+
+    <string name="settings_title">Ajustes</string>
+    <string name="enable_watermark">Activar superposición de marca de agua</string>
+    <string name="overlay_permission_status">Permiso de superposición:</string>
+    <string name="grant_overlay_permission">Conceder Permiso</string>
+    <string name="watermark_opacity">Opacidad de la marca de agua</string>
+    <string name="opacity_value">Opacidad: %1$d%%</string>
+    <string name="aggressive_mode">Protección completa del sistema</string>
+    <string name="play_store_note">Protección de capturas de pantalla centrada en la privacidad.</string>
+    <string name="watermark_section_title">Protección de marca de agua</string>
+    <string name="opacity_section_title">Opacidad de la marca de agua</string>
+    <string name="secure_overlay_label">Modo seguro: %1$s</string>
+
+    <string name="exact_alarm_not_required">La alarma exacta no es necesaria en esta versión de Android.</string>
+    <string name="language_section_title">Idioma</string>
+    <string name="language_system_default">Por defecto del sistema</string>
+    <string name="language_english">English</string>
+    <string name="language_chinese_simplified">中文（简体）</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_french">Français</string>
+</resources>

@@ -137,7 +137,7 @@ class PermissionsActivity : AppCompatActivity() {
 
     private fun requestExactAlarmPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            Toast.makeText(this, "Exact alarm is not required on this Android version.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.exact_alarm_not_required), Toast.LENGTH_SHORT).show()
             return
         }
 
